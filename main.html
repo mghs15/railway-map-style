@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8' />
+<title>Display a map</title>
+<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+<script src='https://api.tiles.mapbox.com/mapbox-gl-js/v1.8.1/mapbox-gl.js'></script>
+<link href='https://api.tiles.mapbox.com/mapbox-gl-js/v1.8.1/mapbox-gl.css' rel='stylesheet' />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+<style>
+body { margin:0; padding:0; }
+#map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+}
+#menu {
+    position: absolute;
+    left:  0.5em;
+    top: 0.5em; 
+    padding: 0.2em 0.5em;
+    margin: 0 0;
+    background: #eeeeee;
+    box-shadow: 0px 0px 0px 5px #eeeeee;
+    border: dashed 3px #dddddd;
+    font-family: 'Open Sans', sans-serif;
+    max-height: 90%;
+    overflow: auto;
+}
+div.colorselect {
+  margin: 5px 0px 5px 0px;
+
+}
+button.local {
+  display: block;
+  text-align:center;
+  background: #dddddd;
+  padding 0 0.5em 0 0.5em;
+  border: solid 2px #ddd;
+  border-radius: 3px;
+  margin: 0px 0px 5px 0px;
+  line-height: 1.5em;
+  font-size: 1em;
+  width: 100%;
+}
+#download {
+  display: block;
+  text-align:center;
+  background: #dddddd;
+  padding 0 0.5em 0 0.5em;
+  border: solid 2px #ddd;
+  border-radius: 3px;
+  margin: 0px 0px 5px 0px;
+  line-height: 1.5em;
+  font-size: 1em;
+  width: 100%;
+}
+
+</style>
+</head>
+<body>
+
+
+<div id='map'></div>
+<div id='menu'>
+  <div><strong>基本設定</strong></div>
+  <div class="colorselect">
+  <table>
+  <tr><td>アクセントカラー</td><td><div id="color-picker-acc"></div></td></tr>
+  <tr><td>メインカラー</td><td><div id="color-picker-main"></div></td></tr>
+  <tr><td>サブカラー</td><td><div id="color-picker-sub"></div></td></tr>
+  </table>
+  </div>
+  <button type="button" class="local" name="colchange" onclick="change_style_color_normal()" >色を地図に反映</button>
+  <button type="button" class="local" name="randcolchange" onclick="change_style_color_rand()" >ランダムに変更</button>
+  <div><strong>種別毎の色変更</strong></div>
+  <div class="colorselect"> 
+  <table>
+  <tr><td>鉄道</td><td><div id="color-picker-rail"></div></td></tr>
+  <tr><td>建物</td><td><div id="color-picker-building"></div></td></tr>
+  <tr><td>等高線</td><td><div id="color-picker-contour"></div></td></tr>
+  <tr><td>水域</td><td><div id="color-picker-waterarea"></div></td></tr>
+  <tr><td>背景色</td><td><div id="color-picker-back"></div></td></tr>
+  <tr><td>（実験中）</td></tr>
+  <tr><td>文字の縁取り</td><td><div id="color-picker-texthalo"></div></td></tr>
+  <tr><td>道路枠線</td><td><div id="color-picker-outline"></div></td></tr>
+  </table>
+  </div>
+  <div><strong>調整</strong></div>
+  <div>
+  <button type="button" class="local" name="monochrome" onclick="change_style_color_monochrome()" >モノクロに変更</button>
+  <button type="button" class="local" name="monochrome" onclick="change_style_color_mono2color()" >モノクロ部彩色</button>
+  <button type="button" class="local" name="monochrome" onclick="change_style_color_sup()" >鮮やかに</button>
+  <button type="button" class="local" name="monochrome" onclick="change_style_color_sdown()" >落ち着かせて</button>
+  <button type="button" class="local" name="monochrome" onclick="change_style_color_lup()" >明るく</button>
+  <button type="button" class="local" name="monochrome" onclick="change_style_color_ldown()" >暗く</button>
+  <button type="button" class="local" name="background" onclick="background_onoff()" >Background</button>
+  </div>
+  <strong>スタイル保存</strong>
+  <div><a id="download">ダウンロード</a></div>
+</div>
+
+<script>
+
+/*************************************************/
+/*UI                                             */
+/*************************************************/
+
+/*************************************************/
+/*ボタンごとの処理                               */
+/*************************************************/
+//通常
+var change_style_color_normal = function(){
+  change_style_color(change_color, true); //true -> ベースのスタイルを利用
+}
+//ランダム
+var change_style_color_rand = function(){
+  change_style_color(randchange_color, false); //false -> 表示されているスタイルを利用
+}
+//モノクロ
+var change_style_color_monochrome = function(){
+  if (map.getLayer('background')){
+    //何もしない
+  }else{
+    background_onoff(main_color_arr[0], 0, 98);
+  }
+  change_style_color(change_monochrome, false); //false -> 表示されているスタイルを利用
+}
+//鮮やか
+var change_style_color_sup = function(){
+  change_style_color(change_sup, false); //false -> 表示されているスタイルを利用
+}
+//落ち着く
+var change_style_color_sdown = function(){
+  change_style_color(change_sdown, false); //false -> 表示されているスタイルを利用
+}
+//明るく
+var change_style_color_lup = function(){
+  change_style_color(change_lup, false); //false -> 表示されているスタイルを利用
+}
+//暗く
+var change_style_color_ldown = function(){
+  change_style_color(change_ldown, false); //false -> 表示されているスタイルを利用
+}
+//暗く
+var change_style_color_mono2color = function(){
+  change_style_color(change_mono2color, false); //false -> 表示されているスタイルを利用
+}
+
+
+/*************************************************/
+/*Mapbox 関係設定                                */
+/*************************************************/
+var map = new mapboxgl.Map({
+  container: 'map', // container id
+  hash: true, //add #position on URL
+  style: './pale.json', // stylesheet location
+  center: [139.78148, 35.768793], // starting position [lng, lat]
+  zoom: 15, // starting zoom
+  minZoom:4,
+  maxZoom: 17.99,
+  localIdeographFontFamily: ['MS Gothic', 'Hiragino Kaku Gothic Pro', 'sans-serif']
+});
+
+
+map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+map.addControl(new mapboxgl.ScaleControl(), 'bottom-right' );
+
+/*************************************************/
+/*Pickr 関係設定（メイン・サブ・アクセント）     */
+/*************************************************/
+var main_color_arr = [0, 100, 50, 1]; //hsla
+var accnt_color_arr = [202.5, 100, 50, 1]; //hsla
+var sub_color_arr = [22.5, 100, 50, 1]; //hsla
+
+var pickrmain = new Pickr({
+
+    el: '#color-picker-main',
+    theme: "monolith",
+    
+    default: 'hsla(0,100,50,1)',
+    
+    swatches: [
+        'hsla(0,100,50,1)',
+        'hsla(22.5,100,50,1)',
+        'hsla(45,100,50,1)',
+        'hsla(67.5,100,50,1)',
+        'hsla(90,100,50,1)',
+        'hsla(112.5,100,50,1)',
+        'hsla(135,100,50,1)',
+        'hsla(157.5,100,50,1)',
+        'hsla(180,100,50,1)',
+        'hsla(202.5,100,50,1)',
+        'hsla(225,100,50,1)',
+        'hsla(247.5,100,50,1)',
+        'hsla(270,100,50,1)',
+        'hsla(292.5,100,50,1)',
+        'hsla(315,100,50,1)',
+        'hsla(327.5,100,50,1)'
+    ],
+    
+    components: {
+        // Main components
+        palette: false,
+        hue: true,
+        // Input / output Options
+        interaction: {
+            hsla: true,
+            hex: true,
+            rgba: true,
+            input: true,
+            save: true
+        }
+    }
+});
+
+var pickracc = new Pickr({
+
+    el: '#color-picker-acc',
+    theme: "monolith",
+    
+    default: 'hsla(202.5,100,50,1)',
+    
+    swatches: [
+        'hsla(0,100,50,1)',
+        'hsla(22.5,100,50,1)',
+        'hsla(45,100,50,1)',
+        'hsla(67.5,100,50,1)',
+        'hsla(90,100,50,1)',
+        'hsla(112.5,100,50,1)',
+        'hsla(135,100,50,1)',
+        'hsla(157.5,100,50,1)',
+        'hsla(180,100,50,1)',
+        'hsla(202.5,100,50,1)',
+        'hsla(225,100,50,1)',
+        'hsla(247.5,100,50,1)',
+        'hsla(270,100,50,1)',
+        'hsla(292.5,100,50,1)',
+        'hsla(315,100,50,1)',
+        'hsla(327.5,100,50,1)'
+    ],
+    
+    components: {
+        // Main components
+        palette: false,
+        hue: true,
+        // Input / output Options
+        interaction: {
+            hsla: true,
+            hex: true,
+            rgba: true,
+            input: true,
+            save: true
+        }
+    }
+});
+
+
+var pickrsub = new Pickr({
+
+    el: '#color-picker-sub',
+    theme: "monolith",
+    
+    default: 'hsla(22.5,100,50,1)',
+    
+    swatches: [
+        'hsla(0,100,50,1)',
+        'hsla(22.5,100,50,1)',
+        'hsla(45,100,50,1)',
+        'hsla(67.5,100,50,1)',
+        'hsla(90,100,50,1)',
+        'hsla(112.5,100,50,1)',
+        'hsla(135,100,50,1)',
+        'hsla(157.5,100,50,1)',
+        'hsla(180,100,50,1)',
+        'hsla(202.5,100,50,1)',
+        'hsla(225,100,50,1)',
+        'hsla(247.5,100,50,1)',
+        'hsla(270,100,50,1)',
+        'hsla(292.5,100,50,1)',
+        'hsla(315,100,50,1)',
+        'hsla(327.5,100,50,1)'
+    ],
+    
+    components: {
+        // Main components
+        palette: false,
+        hue: true,
+        // Input / output Options
+        interaction: {
+            hsla: true,
+            hex: true,
+            rgba: true,
+            input: true,
+            save: true
+        }
+    }
+});
+
+pickrmain.on('save', (color) => {
+    console.log(color.toHSLA());
+    main_color_arr = color.toHSLA();
+})
+
+pickracc.on('save', (color) => {
+    console.log(color.toHSLA());
+    accnt_color_arr = color.toHSLA();
+})
+
+pickrsub.on('save', (color) => {
+    console.log(color.toHSLA());
+    sub_color_arr = color.toHSLA();
+})
+
+
+/*************************************************/
+/*Pickr 関係設定（鉄道・建物・背景）             */
+/*************************************************/
+var rail_color_arr = [0, 1, 50, 1]; //hsla
+var building_color_arr = [45, 100, 85, 1]; //hsla
+var contour_color_arr = [45, 50, 85, 1]; //hsla
+var waterarea_color_arr = [45, 50, 85, 1]; //hsla
+var texthalo_color_arr = [1, 0, 99, 1]; //hsla
+var outline_color_arr = [0, 1, 85, 1]; //hsla
+var back_color_arr = [0, 1, 85, 1]; //hsla
+
+
+var arr2hsla = function(colarr){
+  var col = 'hsla(' + colarr[0] + ',' + colarr[1] + ',' + colarr[2] + ',' + colarr[3] + ')';
+  return col;
+};
+
+var pickrrail = new Pickr({
+
+    el: '#color-picker-rail',
+    theme: "monolith",
+    
+    default: arr2hsla(rail_color_arr),
+    
+    swatches: [
+        'hsla(0,100,50,1)',
+        'hsla(22.5,100,50,1)',
+        'hsla(45,100,50,1)',
+        'hsla(67.5,100,50,1)',
+        'hsla(90,100,50,1)',
+        'hsla(112.5,100,50,1)',
+        'hsla(135,100,50,1)',
+        'hsla(157.5,100,50,1)',
+        'hsla(180,100,50,1)',
+        'hsla(202.5,100,50,1)',
+        'hsla(225,100,50,1)',
+        'hsla(247.5,100,50,1)',
+        'hsla(270,100,50,1)',
+        'hsla(292.5,100,50,1)',
+        'hsla(315,100,50,1)',
+        'hsla(327.5,100,50,1)'
+    ],
+    
+    components: {
+        // Main components
+        palette: false,
+        hue: true,
+        // Input / output Options
+        interaction: {
+            hsla: true,
+            hex: true,
+            rgba: true,
+            input: true,
+            save: true
+        }
+    }
+});
+
+var pickrbuilding = new Pickr({
+
+    el: '#color-picker-building',
+    theme: "monolith",
+    
+    default: arr2hsla(building_color_arr),
+    
+    swatches: [
+        'hsla(0,100,50,1)',
+        'hsla(22.5,100,50,1)',
+        'hsla(45,100,50,1)',
+        'hsla(67.5,100,50,1)',
+        'hsla(90,100,50,1)',
+        'hsla(112.5,100,50,1)',
+        'hsla(135,100,50,1)',
+        'hsla(157.5,100,50,1)',
+        'hsla(180,100,50,1)',
+        'hsla(202.5,100,50,1)',
+        'hsla(225,100,50,1)',
+        'hsla(247.5,100,50,1)',
+        'hsla(270,100,50,1)',
+        'hsla(292.5,100,50,1)',
+        'hsla(315,100,50,1)',
+        'hsla(327.5,100,50,1)'
+    ],
+    
+    components: {
+        // Main components
+        palette: false,
+        hue: true,
+        // Input / output Options
+        interaction: {
+            hsla: true,
+            hex: true,
+            rgba: true,
+            input: true,
+            save: true
+        }
+    }
+});
+
+var pickrcontour = new Pickr({
+
+    el: '#color-picker-contour',
+    theme: "monolith",
+    
+    default: arr2hsla(contour_color_arr),
+    
+    swatches: [
+        'hsla(0,100,50,1)',
+        'hsla(22.5,100,50,1)',
+        'hsla(45,100,50,1)',
+        'hsla(67.5,100,50,1)',
+        'hsla(90,100,50,1)',
+        'hsla(112.5,100,50,1)',
+        'hsla(135,100,50,1)',
+        'hsla(157.5,100,50,1)',
+        'hsla(180,100,50,1)',
+        'hsla(202.5,100,50,1)',
+        'hsla(225,100,50,1)',
+        'hsla(247.5,100,50,1)',
+        'hsla(270,100,50,1)',
+        'hsla(292.5,100,50,1)',
+        'hsla(315,100,50,1)',
+        'hsla(327.5,100,50,1)'
+    ],
+    
+    components: {
+        // Main components
+        palette: false,
+        hue: true,
+        // Input / output Options
+        interaction: {
+            hsla: true,
+            hex: true,
+            rgba: true,
+            input: true,
+            save: true
+        }
+    }
+});
+
+var pickrwaterarea = new Pickr({
+
+    el: '#color-picker-waterarea',
+    theme: "monolith",
+    
+    default: arr2hsla(waterarea_color_arr),
+    
+    swatches: [
+        'hsla(0,100,50,1)',
+        'hsla(22.5,100,50,1)',
+        'hsla(45,100,50,1)',
+        'hsla(67.5,100,50,1)',
+        'hsla(90,100,50,1)',
+        'hsla(112.5,100,50,1)',
+        'hsla(135,100,50,1)',
+        'hsla(157.5,100,50,1)',
+        'hsla(180,100,50,1)',
+        'hsla(202.5,100,50,1)',
+        'hsla(225,100,50,1)',
+        'hsla(247.5,100,50,1)',
+        'hsla(270,100,50,1)',
+        'hsla(292.5,100,50,1)',
+        'hsla(315,100,50,1)',
+        'hsla(327.5,100,50,1)'
+    ],
+    
+    components: {
+        // Main components
+        palette: false,
+        hue: true,
+        // Input / output Options
+        interaction: {
+            hsla: true,
+            hex: true,
+            rgba: true,
+            input: true,
+            save: true
+        }
+    }
+});
+
+var pickrtexthalo = new Pickr({
+
+    el: '#color-picker-texthalo',
+    theme: "monolith",
+    
+    default: arr2hsla(texthalo_color_arr),
+    
+    swatches: [
+        'hsla(0,100,50,1)',
+        'hsla(22.5,100,50,1)',
+        'hsla(45,100,50,1)',
+        'hsla(67.5,100,50,1)',
+        'hsla(90,100,50,1)',
+        'hsla(112.5,100,50,1)',
+        'hsla(135,100,50,1)',
+        'hsla(157.5,100,50,1)',
+        'hsla(180,100,50,1)',
+        'hsla(202.5,100,50,1)',
+        'hsla(225,100,50,1)',
+        'hsla(247.5,100,50,1)',
+        'hsla(270,100,50,1)',
+        'hsla(292.5,100,50,1)',
+        'hsla(315,100,50,1)',
+        'hsla(327.5,100,50,1)'
+    ],
+    
+    components: {
+        // Main components
+        palette: false,
+        hue: true,
+        // Input / output Options
+        interaction: {
+            hsla: true,
+            hex: true,
+            rgba: true,
+            input: true,
+            save: true
+        }
+    }
+});
+
+var pickroutline = new Pickr({
+
+    el: '#color-picker-outline',
+    theme: "monolith",
+    
+    default: arr2hsla(outline_color_arr),
+    
+    swatches: [
+        'hsla(0,100,50,1)',
+        'hsla(22.5,100,50,1)',
+        'hsla(45,100,50,1)',
+        'hsla(67.5,100,50,1)',
+        'hsla(90,100,50,1)',
+        'hsla(112.5,100,50,1)',
+        'hsla(135,100,50,1)',
+        'hsla(157.5,100,50,1)',
+        'hsla(180,100,50,1)',
+        'hsla(202.5,100,50,1)',
+        'hsla(225,100,50,1)',
+        'hsla(247.5,100,50,1)',
+        'hsla(270,100,50,1)',
+        'hsla(292.5,100,50,1)',
+        'hsla(315,100,50,1)',
+        'hsla(327.5,100,50,1)'
+    ],
+    
+    components: {
+        // Main components
+        palette: false,
+        hue: true,
+        // Input / output Options
+        interaction: {
+            hsla: true,
+            hex: true,
+            rgba: true,
+            input: true,
+            save: true
+        }
+    }
+});
+
+
+var pickrback = new Pickr({
+
+    el: '#color-picker-back',
+    theme: "monolith",
+    
+    default: arr2hsla(back_color_arr),
+    
+    swatches: [
+        'hsla(0,100,50,1)',
+        'hsla(22.5,100,50,1)',
+        'hsla(45,100,50,1)',
+        'hsla(67.5,100,50,1)',
+        'hsla(90,100,50,1)',
+        'hsla(112.5,100,50,1)',
+        'hsla(135,100,50,1)',
+        'hsla(157.5,100,50,1)',
+        'hsla(180,100,50,1)',
+        'hsla(202.5,100,50,1)',
+        'hsla(225,100,50,1)',
+        'hsla(247.5,100,50,1)',
+        'hsla(270,100,50,1)',
+        'hsla(292.5,100,50,1)',
+        'hsla(315,100,50,1)',
+        'hsla(327.5,100,50,1)'
+    ],
+    
+    components: {
+        // Main components
+        palette: false,
+        hue: true,
+        // Input / output Options
+        interaction: {
+            hsla: true,
+            hex: true,
+            rgba: true,
+            input: true,
+            save: true
+        }
+    }
+});
+
+
+pickrrail.on('save', (color) => {
+    console.log(color.toHSLA());
+    rail_color_arr = color.toHSLA();
+    change_style_color(change_railcolor, false); //色を変えたらすぐに反映
+})
+
+pickrbuilding.on('save', (color) => {
+    console.log(color.toHSLA());
+    building_color_arr = color.toHSLA();
+    change_style_color(change_buildingcolor, false); //色を変えたらすぐに反映
+})
+
+pickrcontour.on('save', (color) => {
+    console.log(color.toHSLA());
+    contour_color_arr = color.toHSLA();
+    change_style_color(change_contourcolor, false); //色を変えたらすぐに反映
+})
+
+pickrwaterarea.on('save', (color) => {
+    console.log(color.toHSLA());
+    waterarea_color_arr = color.toHSLA();
+    change_style_color(change_waterareacolor, false); //色を変えたらすぐに反映
+})
+
+pickrtexthalo.on('save', (color) => {
+    console.log(color.toHSLA());
+    texthalo_color_arr = color.toHSLA();
+    change_style_color(change_texthalocolor, false); //色を変えたらすぐに反映
+})
+
+
+pickroutline.on('save', (color) => {
+    console.log(color.toHSLA());
+    outline_color_arr = color.toHSLA();
+    change_style_color(change_outlinecolor, false); //色を変えたらすぐに反映
+})
+
+pickrback.on('save', (color) => {
+    console.log(color.toHSLA());
+    back_color_arr = color.toHSLA();
+    change_style_color(change_backcolor, false); //色を変えたらすぐに反映
+})
+
+/*************************************************/
+/*"rgba(r,g,b,a)"などのパース                      */
+/*************************************************/
+var parsecolor = function(txt){
+  if( (txt.indexOf("rgba") == 0) || (txt.indexOf("hsla") == 0) ){
+    var length = txt.length - 1;
+    var type= txt.slice(0, 4);
+    txt = txt.slice(5,length );
+    var col = txt.split(",");
+  }else{
+    var length = txt.length - 1;
+    var type= txt.slice(0, 3);
+    txt = txt.slice(4,length );
+    var col = txt.split(",");
+    col.push(1);
+  }
+  var color = [];
+  color.push( type );
+  color.push( parseInt(col[0]) );
+  color.push( parseInt(col[1]) );
+  color.push( parseInt(col[2]) );
+  color.push( Number(col[3]) );
+  return color;
+}
+
+/*************************************************/
+/*RGB→HSLの変換関係設定                         */
+/*************************************************/
+var calcsl = function(max, min) {
+    var L = (max + min)/(2*255);
+    var total = max + min;
+    var S=(max - min)/255;
+    if((total <= 0) || (total >= 510)){
+        S = 0;
+    }else if(total < 255){
+        S = (max-min)/(total);
+    }else{
+        S = (max-min)/(255*2-total);
+    }
+    var SL = {"s" : S, "l" : L};
+    return SL;
+}
+
+var rgb2hsl = function(r, g, b, a = 1) {
+    var max=0; var middle=0; var min = 0; 
+    var h=0; var s=0; var l=0; 
+    if((r == g) && (r == b)){
+        max = r; middle=b; min = g; 
+        h = 0;
+        var sl = calcsl(max, min);
+        s = sl.s;
+        l = sl.l;
+    }else if((r <= g) && (r < b)){
+        min = r;
+        if(g < b){
+            middle=g; max = b; 
+        }else{ 
+            middle=b; max = g; 
+        }
+        h = 60*((b-g)/(max-min))+180;
+        var sl = calcsl(max, min);
+        s = sl.s;
+        l = sl.l;
+    }else if((g <= b) && (g < r)){
+        min = g; 
+        if(r < b){
+            middle=r; max = b; 
+        }else{ 
+            middle=b; max = r; 
+        } 
+        h = 60*((r-b)/(max-min))+300;
+        var sl = calcsl(max, min);
+        s = sl.s;
+        l = sl.l;
+    }else{
+        min = b; 
+        if(g < r){
+            middle=g; max = r; 
+        }else{ 
+            middle=r; max = g; 
+        }
+        h = 60*((g-r)/(max-min))+60;
+        var sl = calcsl(max, min);
+        s = sl.s;
+        l = sl.l;
+    }
+    
+    if(h > 360){
+        h = h - 360;
+    }else if(h < 0){
+        h = h + 360;
+    }
+    
+    var hsl = [ Math.floor(h), Math.floor(s*100), Math.floor(l*100), a ];
+    return hsl;
+}
+
+
+/*************************************************/
+/*文字列"hsla(h,s,l,a)"への変換処理              */
+/*************************************************/
+
+var create_hlsa_string = function(c1, c2, c3, c4, move = 0){
+    c1t = c1;
+    c2t = c2;
+    c3t = c3;
+    c4t = c4;
+
+    if( c1 > 360){
+        c1t = c1 - 360 * Math.floor(c1/360);
+    }else if(c1 < 0){
+        c1t = c1 - 360 * Math.ceil(c1/360);
+    }
+    
+    if(c2 > 100){
+      c2t = 100 - move;
+    }else if(c2 < 0){
+      c2t = 0 + move;
+    }
+    
+    if(c3 > 100){
+      c3t = 100 - move;
+    }else if(c3 < 0){
+      c3t = 0 + move;
+    }
+    
+    c1t = Math.floor(c1t);
+    c2t = Math.floor(c2t) + "%";
+    c3t = Math.floor(c3t) + "%";
+    var color_txt = "hsla" + "(" + c1t + "," + c2t + "," + c3t + "," + c4t + ")";
+    return color_txt;
+}
+
+
+/*************************************************/
+/*色自体の変換設定（全体）                       */
+/*************************************************/
+
+//メイン・サブ・アクセントカラーから変更 ------------------------------------------
+var change_color = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式1=H, 2=S, 3=L
+  var c1 = o1;
+  var c2 = o2;
+  var c3 = o3;
+  var c4 = o4;
+  
+  //以下はpale用
+  if( o2 < 1){ //モノクロ系（H=0はpaleにはない。）
+    if(o3 > 99){
+      c1 = main_color_arr[0];
+    }else if(prop_name.match(/text-/)){
+      c1 = main_color_arr[0];
+      c3 = o3 * 0.55;
+    }else if(prop_name.match(/fill/)){ //建物（+中縮尺湿地）
+      c1 = main_color_arr[0];//建物は量も多いため、メインカラーを適用したい。
+      c2 = 50;//建物は量が多いため、汚くならないように純色にする。
+    }else if(o3 > 65){ //薄い色の部分
+      c1 = main_color_arr[0];
+      c2 = o2 + 50;
+    }else{
+      c1 = main_color_arr[0];
+    }
+  }else if((o1 > 0) && (o1 < 41)){ //黄色系統：国道
+    c1 = main_color_arr[0]; //ラインデータの中では、量も多いため、メインカラーを適用したい。
+  }else if((o1 > 40) && (o1 < 45)){ //黄色系統：等高線・小縮尺道路
+    c1 = main_color_arr[0];
+    c3 = 80;// 等高線は薄めに、小縮尺道路は濃いめにLを調整
+  }else if((o1 > 120) && (o1 < 180) && !(prop_name.match(/fill-/)) ){ //緑系統：高速道路・注記
+    c1 = (o1 - 145)/3 + accnt_color_arr[0];
+  }else if((o1 > 120) && (o1 < 180) && (prop_name.match(/fill-/)) ){ //緑系統：大縮尺湿地
+    c1 = main_color_arr[0];
+    c3 = o3 + 15;
+  }else if((o1 > 200) && (o1 < 270) && (prop_name.match(/fill-/)) ){ //青色系統：水域（+万年雪）
+    c1 = sub_color_arr[0]; //水域は、少し色味の違う色が良い。
+  }else if((o1 > 200) && (o1 < 270) ){ //青色系統：海岸線・河川・注記
+    c1 = sub_color_arr[0]; //小縮尺でメインカラーが欲しい場合、「c1 = main_color_arr[0];」に。
+  }else{
+    c1 = main_color_arr[0];
+  }
+  
+  //hslaの場合
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  
+  return(color_txt);
+}
+
+//ランダムに変更 -------------------------------------------------------------------
+var randchange_color = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換用の数値
+  const rotatedeg = 60;
+  const randrange = 15;
+  //変換式1=H, 2=S, 3=L
+  var c1 = o1 + ( Math.random() - 0.5) * randrange + rotatedeg;
+  var c2 = o2 + ( Math.random() - 0.5) * 10;
+  var c3 = o3 + ( Math.random() - 0.5) * 10;
+  var c4 = o4;
+  
+  if(o3 == 100){ //白はそのまま
+    c2 = o2; 
+    c3 = o3;
+  }
+  if(prop_name.match(/text-halo-/)){ //text-haloはそのまま
+    c2 = o2; 
+    c3 = o3;
+  }
+  
+  //以下はpale用（初回のモノクロ系を処理する目的。直前のスタイル利用の場合は、以下の分類は保障できりない。）
+/*
+  if( o2 < 1){ //モノクロ系（H=0はpaleにはない。）
+    if(o3 > 99){
+      //そのまま
+    }else if(prop_name.match(/text-/)){
+      c3 = o3 * 0.55;
+    }else if(prop_name.match(/fill/)){ //建物（+湿地,砂礫地）
+      c1 = o1 + Math.random() * randrange + rotatedeg;
+      c2 = 50;
+    }else if(o3 > 65){ //薄い色の部分
+      c1 = o1 + Math.random() * randrange + rotatedeg;;
+      c2 = o2 + 50;
+    }else{
+      //そのまま
+    }
+  }else if((o1 > 0) && (o1 < 41)){ //黄色系統：国道
+    c1 = o1 + Math.random() * randrange + rotatedeg;
+  }else if((o1 > 40) && (o1 < 45)){ //黄色系統：等高線
+    c1 = o1 + Math.random() * randrange + rotatedeg;
+    c3 = o3 + 30; //ちょっと淡めの色にする
+  }else if((o1 > 120) && (o1 < 180)){ //緑系統：高速道路・注記
+    c1 = o1 + Math.random() * randrange + rotatedeg;
+  }else if((o1 > 200) && (o1 < 270) && (prop_name.match(/fill-/)) ){ //青色系統：水域（+万年雪）
+    c1 = o1 + Math.random() * randrange + rotatedeg;
+  }else if((o1 > 200) && (o1 < 270) && (prop_name.match(/line-/)) ){ //青色系統：海岸線・河川
+    c1 = o1 + Math.random() * randrange + rotatedeg;
+  }else{
+    c1 = o1 + Math.random() * randrange + rotatedeg;;
+  }
+*/
+  
+  //hslaの場合
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 25);
+  
+  return(color_txt);
+}
+
+/*************************************************/
+/*色自体の変換設定（一部レイヤのみ）             */
+/*************************************************/
+
+//鉄道
+var change_railcolor = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式
+  var c1 = o1;
+  var c2 = o2;
+  var c3 = o3;
+  var c4 = o4;
+  
+  if(slayer == "railway"){ 
+    c1 = rail_color_arr[0];
+    c2 = rail_color_arr[1];
+    c3 = (o3 + rail_color_arr[2])/2;
+    
+    if(c3 > 99){ //完全に白にはしない
+      c3 = 99;
+    } 
+  }
+  
+  if(o3 == 100){ //白はそのまま
+    c2 = o2; 
+    c3 = o3;
+  }
+  
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  return(color_txt);
+}
+
+
+//建物
+var change_buildingcolor = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式
+  var c1 = o1;
+  var c2 = o2;
+  var c3 = o3;
+  var c4 = o4;
+  
+  if(slayer == "building"){ 
+    c1 = building_color_arr[0];
+    c2 = building_color_arr[1];
+    c3 = (o3 + building_color_arr[2])/2;
+    
+    if(c3 > 99){ //完全に白にはしない
+      c3 = 99;
+    } 
+  }
+  
+  if(o3 == 100){ //白はそのまま
+    c2 = o2; 
+    c3 = o3;
+  }
+  
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  return(color_txt);
+}
+
+//等高線
+var change_contourcolor = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式
+  var c1 = o1;
+  var c2 = o2;
+  var c3 = o3;
+  var c4 = o4;
+  
+  if(slayer == "contour"){ 
+    c1 = contour_color_arr[0];
+    c2 = contour_color_arr[1];
+    c3 = contour_color_arr[2];
+    
+    if(c3 > 99){ //完全に白にはしない
+      c3 = 99;
+    }
+  }
+
+    if(o3 == 100){ //白はそのまま
+      c2 = o2; 
+      c3 = o3;
+    }
+  
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  return(color_txt);
+}
+
+
+//文字の縁取り
+var change_texthalocolor = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式
+  var c1 = o1;
+  var c2 = o2;
+  var c3 = o3;
+  var c4 = o4;
+  
+  if(prop_name.match(/text-halo-/)){ 
+    c1 = texthalo_color_arr[0];
+    c2 = texthalo_color_arr[1];
+    c3 = texthalo_color_arr[2];
+  }
+
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  return(color_txt);
+}
+
+
+//水域
+var change_waterareacolor = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式
+  var c1 = o1;
+  var c2 = o2;
+  var c3 = o3;
+  var c4 = o4;
+  
+  if(slayer == "waterarea"){ 
+    c1 = waterarea_color_arr[0];
+    c2 = waterarea_color_arr[1];
+    c3 = waterarea_color_arr[2];
+    
+    if(c3 > 99){ //完全に白にはしない
+      c3 = 99;
+    }   
+  }
+  
+  if(o3 == 100){ //白はそのまま
+    c2 = o2; 
+    c3 = o3;
+  }
+  
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  return(color_txt);
+}
+
+//道路枠線
+var change_outlinecolor = function({outputtype, o1, o2 , o3, o4, prop_name, slayer, linerole}){
+  //変換式
+  var c1 = o1;
+  var c2 = o2;
+  var c3 = o3;
+  var c4 = o4;
+  
+  if(slayer == "road" && linerole == "outline"){ 
+    c1 = outline_color_arr[0];
+    c2 = outline_color_arr[1];
+    c3 = outline_color_arr[2];
+    
+    if(c3 > 99){ //完全に白にはしない
+      c3 = 99;
+    }   
+  }
+  
+  if(o3 == 100){ //白はそのまま
+    c2 = o2; 
+    c3 = o3;
+  }
+  
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  return(color_txt);
+}
+
+//背景
+var change_backcolor = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式
+  var c1 = o1;
+  var c2 = o2;
+  var c3 = o3;
+  var c4 = o4;
+  
+  if(prop_name.match(/background/)){ 
+    c1 = back_color_arr[0];
+    c2 = back_color_arr[1];
+    c3 = back_color_arr[2];
+    
+    if(c3 > 99){ //完全に白にはしない
+      c3 = 99;
+    } 
+  }
+  
+  if(o3 == 100){ //白はそのまま
+    c2 = o2; 
+    c3 = o3;
+  }
+  
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  return(color_txt);
+}
+
+/*************************************************/
+/*色自体の変換設定（調整用）                     */
+/*************************************************/
+
+//あざやか -------------------------------------------------------------------
+var change_sup = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式1=H, 2=S, 3=L
+  var c1 = o1;
+  var r = 600; //100以上で
+  var a = Math.sqrt((r*r + 2*50*50 - 100*100)/2) + 50;
+  var b = -a + 100;
+  var x = (o2-100)*0.95 + 100;
+//  console.log(r + "," + a + "," +  b+ "," +  Math.sqrt(a*a + b*b));
+  var c2 = (b + Math.sqrt( r*r - (x-a)*(x-a) ) )*1 ;
+  c2 = Math.round(c2);
+  console.log(o2 + " -> " + c2);
+  var c3 = o3;
+  var c4 = o4;
+  
+  //白・黒は変更しない。（モノクロカラーは別にS補正の機能をつける）
+  if((o2 < 1)){
+    c2 = o2;
+  }
+  //haloは変更しない
+  if(prop_name.match(/text-halo-/)){
+    c2 = o2;
+  }
+
+  //hslaの場合
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  
+  return(color_txt);
+}
+
+//落ち着く -------------------------------------------------------------------
+var change_sdown = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式1=H, 2=S, 3=L
+  var c1 = o1;
+  var r = 600; //100以上で
+  var a = -Math.sqrt((r*r + 2*50*50 - 100*100)/2) + 50;
+  var b = -a + 100;
+  var x = o2*0.95;
+//  console.log(r + "," + a + "," +  b+ "," +  Math.sqrt(a*a + b*b));
+  var c2 = (b - Math.sqrt( r*r - (x-a)*(x-a) ) )*1 ;
+  if(c2 > 1){
+    c2 = Math.ceil(c2);
+  }else{
+    c2 = 1; //完全には彩度0にしない。
+  }
+  console.log(o2 + " -> " + c2);
+  var c3 = o3;
+  var c4 = o4;
+  
+  //白・黒は変更しない。（モノクロカラーは別にS補正の機能をつける）
+  if((o2 < 1)){
+    c2 = o2;
+  }
+  //haloだけは変更しない
+  if(prop_name.match(/text-halo-/)){
+    c2 = o2;
+  }
+
+  //hslaの場合
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  
+  return(color_txt);
+}
+
+//明るく -------------------------------------------------------------------
+var change_lup = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式1=H, 2=S, 3=L
+  var c1 = o1;
+  var c2 = o2;
+  var r = 600; //100以上で
+  var a = Math.sqrt((r*r + 2*50*50 - 100*100)/2) + 50;
+  var b = -a + 100;
+  var x = o3 + 1;
+//  console.log(r + "," + a + "," +  b+ "," +  Math.sqrt(a*a + b*b));
+  var c3 = (b + Math.sqrt( r*r - (x-a)*(x-a) ) )*1 ;
+  c3 = Math.round(c3);
+  if(c3 > 99){
+    c3 = 99; //完全に白にはしない
+  }
+  console.log(o3 + " -> " + c3);
+  var c4 = o4;
+  
+  //白は変更しない。（「ランダム」ボタンにより、白の部分が変化するのを防ぐため、L=100はもともとの白のみとする。）
+  if((o3 > 99)){
+    c3 = o3;
+  }
+  //haloだけは変更しない
+  if(prop_name.match(/text-halo-/)){
+    c3 = o3;
+  }
+
+  //hslaの場合
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  
+  return(color_txt);
+}
+
+//暗く -------------------------------------------------------------------
+var change_ldown = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式1=H, 2=S, 3=L
+  var c1 = o1;
+  var c2 = o2;
+  var r = 600; //100以上で
+  var a = -Math.sqrt((r*r + 2*50*50 - 100*100)/2) + 50;
+  var b = -a + 100;
+  var x = o3 - 1;
+//  console.log(r + "," + a + "," +  b+ "," +  Math.sqrt(a*a + b*b));
+  var c3 = (b - Math.sqrt( r*r - (x-a)*(x-a) ) )*1 ;
+  c3 = Math.round(c3);
+  if(c3 < 1){
+    c3 = 1; //完全に黒にはしない
+  }
+  console.log(o3 + " -> " + c3);
+  var c4 = o4;
+  
+  //白は変更しない。（「ランダム」ボタンにより、白の部分が変化するのを防ぐため、L=100はもともとの白のみとする。）
+  if((o3 > 99)){
+    c3 = o3;
+  }
+  //haloだけは変更しない
+  if(prop_name.match(/text-halo-/)){
+    c3 = o3;
+  }
+
+  //hslaの場合
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  
+  return(color_txt);
+}
+
+//モノクロ -------------------------------------------------------------------
+var change_monochrome = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式1=H, 2=S, 3=L
+  var c1 = o1;
+  var c2 = o2;
+  var c3 = o3;
+  var c4 = o4;
+  
+  if(o2 > 0){
+    c2 = 1;
+  }
+
+  //hslaの場合
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  
+  return(color_txt);
+}
+
+//モノクロ部分の彩度Sを上げる ------------------------------------------
+var change_mono2color = function({outputtype, o1, o2 , o3, o4, prop_name, slayer}){
+  //変換式1=H, 2=S, 3=L
+  var c1 = o1;
+  var c2 = o2;
+  var c3 = o3;
+  var c4 = o4;
+  
+  if(o2 < 1){ //モノクロ系
+    c2 = 50;
+    if(o3 < 100){ //白（L=100%）は除く
+      c3 = (o3 + 20) * (100/120);
+    }
+  }
+  
+  //haloだけは変更しない
+  if(prop_name.match(/text-halo-/)){
+    c2 = o2;
+    c3 = o3;
+  }
+  
+  //hslaの場合
+  var color_txt = create_hlsa_string(c1, c2, c3, c4, 0);
+  
+  return(color_txt);
+}
+
+
+//---------------------------------------------------------------------
+/* そのまま表示する（変換しない）変換式のメモ */
+var stay_color = function(outputtype, o1, o2 , o3, o4){
+  //変換式
+  var c1 = o1;
+  var c2 = o2;
+  var c3 = o3;
+  var c4 = o4;
+  
+  if((outputtype == "hsla")){ //hslaの場合 % が必要
+    if( c1 > 360){
+        c1 = c1 - 360 * Math.floor(c1/360);
+    }else if(c1 < 0){
+        c1 = c1 - 360 * Math.ceil(c1/360);
+    }
+    c1 = Math.floor(c1);
+    c2 = Math.floor(c2) + "%";
+    c3 = Math.floor(c3) + "%";
+  }
+  var color_txt = outputtype + "(" + c1 + "," + c2 + "," + c3 + "," + c4 + ")";
+  return(color_txt);
+}
+
+
+
+/*test*/
+console.log(parsecolor("rgba(2,46,144,0.37)"));
+console.log(change_color("rgba", 2, 46, 144, 0.37));
+console.log(rgb2hsl( 2, 46, 144));
+
+
+
+/*************************************************/
+/*バックグラウンドの処理                         */
+/*************************************************/
+// layer.id = "background"を前提とする。
+// background layer の初期設定
+var create_backgorund_layer = function( h = main_color_arr[0], s = 100, l = 98){
+var background_color = "hsla(" + h + "," + s + "%," + l + "%,1)";
+  var background_layer = {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": background_color,
+        "background-opacity": 1
+      },
+      "layout": {
+        "visibility": "visible"
+      }
+  };
+  return background_layer;
+}
+//backgroundのオンオフ
+var background_onoff = function( h = main_color_arr[0], s = 100, l = 98){
+  var styleLoadStatus = map.isStyleLoaded();
+  if(styleLoadStatus){
+    if (map.getLayer('background')){
+      var target_layer = map.getLayer('background');
+      if(target_layer.visibility === "visible"){ //visibilityはlayout.visibilityには入らないようだ。
+        map.setLayoutProperty('background', 'visibility', 'none');
+        console.log("backgroundをOFFにしました。");
+      }else{
+        map.setLayoutProperty('background', 'visibility', 'visible');
+        console.log("backgroundをONにしました。");
+      }
+    }else{
+      var style = map.getStyle();
+      var background_layer = create_backgorund_layer(h, s, l);
+      style.layers.unshift(background_layer);
+      map.setStyle(style);
+      console.log("backgroundを追加しました。");
+    }
+  }else{
+    alert("まだ地図のスタイルを読み込めていません！");
+  }
+}
+
+/*************************************************/
+/*変換した色を表示しているスタイルに反映         */
+/*************************************************/
+//最初にロードしたスタイルを保存 
+var style_original = [];
+map.on("load", function(){
+  style_original = map.getStyle();
+});
+
+map.on("load", function(){
+  console.log(style_original);//確認用
+});
+
+
+//最初にロードしたスタイルをベースに色の変換を行う。
+var change_style_color = function(callback, use_origin_style = true, input = 0){
+  /* スタイルの確認 */
+  var styleLoadStatus = map.isStyleLoaded();
+  if(styleLoadStatus){
+    if(style_original && use_origin_style){
+      var style = JSON.parse(JSON.stringify(style_original));
+      console.log("オリジナル利用");
+    }else{
+      var style = map.getStyle();
+      console.log("直前のスタイルを利用");
+    }
+    
+    //色の処理
+    var styleres = change_style(style, callback, use_origin_style);
+    
+    //メタデータの整理
+    styleres.metadata.colorset = {
+        "main": main_color_arr,
+        "sub": sub_color_arr,
+        "accent":accnt_color_arr
+    };
+    
+    //作成したスタイルを実際に地図に反映＋ダウンロード準備
+    map.setStyle(styleres);
+    console.log(styleres);
+    var stylejson = JSON.stringify(styleres, null, "\t");
+    setdownload(stylejson); //ダウンロード準備
+    console.log("変換完了");
+    
+  }else{
+    alert("まだ地図のスタイルを読み込めていません！");
+  }
+}
+
+//色の変換処理にかける
+var change_style = function(style, callback, use_origin_style = true){
+    /* 処理 */
+    var layers = style.layers;
+    var backgrond_flag = false; //backgroundがあるかどうかの記録用
+    
+    for(var i = 0;  i < layers.length;  i++ ) {
+      //console.log(layer);
+      var layer = layers[i];
+      
+      if(layer["source-layer"]){
+        var slayer = layer["source-layer"];
+      }else{
+        var slayer = "";
+      }
+      
+      if(layer["minzoom"]){
+        var minzoom = layer["minzoom"];
+      }else{
+        var minzoom = "";
+      }
+      
+      if(layer["maxzoom"]){
+        var maxzoom = layer["maxzoom"];
+      }else{
+        var maxzoom = "";
+      }
+      
+      
+      if(layer.metadata && layer.metadata["line-role"]){
+        var linerole = layer.metadata["line-role"];
+      }else{
+        var linerole = "";
+      }
+      
+      
+      
+      for(name in layer){
+        if(name === "paint"){
+          for(name in layer.paint){
+            if(name.match(/-color/)) {
+              //console.log(name);
+              //console.log(layer.paint[name]);
+              
+              var col = parsecolor(layer.paint[name]); //文字列をrgbaの配列にパース
+              //console.log(col);
+              if((col[0] == "rgba") || (col[0] == "rgb")){ //rgb系ならhslに変換
+                var hsl = rgb2hsl(col[1], col[2], col[3], col[4]);
+              }else{
+                if(col[4]){
+                  var hsl = [col[1], col[2], col[3], col[4]];
+                }else{
+                  var hsl = [col[1], col[2], col[3], 1];
+                }
+              }
+              //console.log(hsl);
+              //色を変換して反映
+              layer.paint[name] = callback({
+                outputtype: "hsla", 
+                o1: hsl[0], 
+                o2: hsl[1], 
+                o3: hsl[2], 
+                o4: hsl[3], 
+                prop_name: name, 
+                slayer: slayer,
+                linerole: linerole
+              }
+              );
+              //console.log(layer.paint[name]);
+            }
+          }
+        /* おそらくlayoutに色の設定はない気がする。
+        }else if(name === "layout"){
+          for(name in layer.layout){
+            if(name.match(/-color/)) {
+              var col = parsergb(layer.layout[name]); //文字列をrgbaの配列にパース
+              layer.layout[name] = change_color("rgba", col[0], col[1], col[2], col[3]);//rgbaを変換して反映
+            }
+          }
+        */
+        }
+      }
+      
+      //backgroundがあるか記録。
+      if(layer.type == "background"){
+        backgrond_flag = true;
+        layer.id = "background"; //IDをbackgroundに強制変更
+      }
+      
+    }
+    
+    //backgroundがなければ追加
+    if(!backgrond_flag){
+      if(callback.name === "change_backcolor"){ // 関数名から分岐
+        var background_layer = create_backgorund_layer(back_color_arr[0],back_color_arr[1],back_color_arr[2]);
+      }else{
+        var background_layer = create_backgorund_layer();
+      }
+      style.layers.unshift(background_layer);
+    }
+    
+    //スタイルにメタデータを設定
+    if(!(style.metadata)){
+      style.metadata = {}
+    }
+    
+    return style;
+}
+/*************************************************/
+/*ダウンロードの処理                               */
+/*************************************************/
+//stylejsonはJSON形式を保った文字列
+var setdownload = function(stylejson){
+      var blob = new Blob([stylejson], {type: 'application\/json'});
+      var url = URL.createObjectURL(blob);
+      const a = document.getElementById('download');
+      a.href = window.URL.createObjectURL(blob);
+      a.download = "style-m" + Math.floor(main_color_arr[0]) + "-s" + Math.floor(sub_color_arr[0]) + "-a" + Math.floor(accnt_color_arr[0]) + ".json";
+}
+
+
+
+</script>
+ 
+</body>
+</html>

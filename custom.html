@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8' />
+<title>Railway Map</title>
+<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+<script src='https://api.tiles.mapbox.com/mapbox-gl-js/v1.8.1/mapbox-gl.js'></script>
+<link href='https://api.tiles.mapbox.com/mapbox-gl-js/v1.8.1/mapbox-gl.css' rel='stylesheet' />
+<style>
+body { margin:0; padding:0; }
+#map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+}
+#menu {
+    position: absolute;
+    left:  0.5em;
+    top: 0.5em; 
+    padding: 0.2em 0.5em;
+    margin: 0 0;
+    background: #eeeeee;
+    box-shadow: 0px 0px 0px 5px #eeeeee;
+    border: dashed 3px #dddddd;
+    font-family: 'Open Sans', sans-serif;
+    max-height: 90%;
+    overflow: auto;
+}
+div.colorselect {
+  margin: 5px 0px 5px 0px;
+
+}
+button.local {
+  display: block;
+  text-align:center;
+  background: #dddddd;
+  padding 0 0.5em 0 0.5em;
+  border: solid 2px #ddd;
+  border-radius: 3px;
+  margin: 0px 0px 5px 0px;
+  line-height: 1.5em;
+  font-size: 1em;
+  width: 100%;
+}
+#download {
+  display: block;
+  text-align:center;
+  background: #dddddd;
+  padding 0 0.5em 0 0.5em;
+  border: solid 2px #ddd;
+  border-radius: 3px;
+  margin: 0px 0px 5px 0px;
+  line-height: 1.5em;
+  font-size: 1em;
+  width: 100%;
+}
+
+</style>
+</head>
+<body>
+
+
+<div id='map'></div>
+<div id='menu'>
+  <button type="button" class="local" name="colchange" onclick="action()" >実行</button>
+  <div><a id="download">ダウンロード</a></div>
+</div>
+
+<script>
+
+/*************************************************/
+/*Mapbox 関係設定                                */
+/*************************************************/
+var map = new mapboxgl.Map({
+  container: 'map', // container id
+  hash: true, //add #position on URL
+  style: './custom.json', // stylesheet location
+  center: [139.78148, 35.768793], // starting position [lng, lat]
+  zoom: 15, // starting zoom
+  maxZoom: 17.99,
+  localIdeographFontFamily: ['MS Gothic', 'Hiragino Kaku Gothic Pro', 'sans-serif']
+});
+
+
+map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+map.addControl(new mapboxgl.ScaleControl() );
+
+
+/*************************************************/
+/*変換した色を表示しているスタイルに反映         */
+/*************************************************/
+//最初にロードしたスタイルを保存 
+var style_original = [];
+map.on("load", function(){
+  style_original = map.getStyle();
+});
+
+map.on("load", function(){
+  console.log(style_original);//確認用
+});
+
+
+//最初にロードしたスタイルをベースに解析を行う。
+var stylechange = function(callback, use_origin_style = true, input = 0){
+  /* スタイルの確認 */
+  var styleLoadStatus = map.isStyleLoaded();
+  if(styleLoadStatus){
+    if(style_original && use_origin_style){
+      var style = JSON.parse(JSON.stringify(style_original));
+      console.log("オリジナル利用");
+    }else{
+      var style = map.getStyle();
+      console.log("直前のスタイルを利用");
+    }
+    
+    /* 処理 */
+    var layers = style.layers;
+    var results_layers = [];
+    var results_raillayers = [];
+    var results_symbollayers = [];
+    var results_symbolraillayers = [];
+    
+    for(var i = 0;  i < layers.length;  i++ ) {
+      //console.log(layer);
+      var layer = layers[i];
+      
+      //各レイヤの属性情報を格納
+      var metadata_path = "";
+      var slayer = "";
+      var manz = "-";
+      var minz = "-";
+      
+      
+      //鉄道
+      if( layer["source-layer"] && layer["source-layer"] == "railway" && layer.paint["line-width"] ){
+        
+        if(layer["maxzoom"] < 15 ){
+          var lwd = layer.paint["line-width"];
+          if(!lwd.stops && lwd > 1){
+            layer.paint["line-width"] = lwd/2;
+          }
+        }else if(layer["maxzoom"] < 18 ){
+          var lwd = layer.paint["line-width"];
+          if(!lwd.stops && lwd > 1){
+            layer.paint["line-width"] = lwd*0.75;
+          }
+        }
+        
+        results_raillayers.push(layer);
+        
+      }else if( layer["source-layer"] && (layer["source-layer"] == "symbol" || layer["source-layer"] == "label")){
+        //植生記号については、もうちょっと考える
+        
+        //鉄道・駅（道の駅除く）
+        if(layer.metadata.title.match(/駅/) && !layer.metadata.title.match(/の/)){
+          if(layer.paint["text-color"]){
+            layer.paint["text-color"] = "hsla(240,100%,50%,1)";
+          }
+          results_symbolraillayers.push(layer);
+        }else if(layer.metadata.title.match(/鉄道/)){
+          if(layer.paint["text-color"]){
+            layer.paint["text-color"] = "hsla(270,100%,50%,1)";
+          }
+          results_symbolraillayers.push(layer);
+        }else{
+          results_symbollayers.push(layer);
+        }
+      }else{
+        
+        if( layer["source-layer"] && layer["source-layer"] == "road" && layer.paint["line-width"] ){
+          if(layer["minzoom"] == 11 && layer["maxzoom"] == 14 ){
+            var lwd = layer.paint["line-width"];
+            if(!lwd.stops){
+              layer.paint["line-width"] = lwd/2;
+            }
+          }else if(layer["minzoom"] == 8 && layer["maxzoom"] == 11 ){
+            var lwd = layer.paint["line-width"];
+            if(!lwd.stops){
+              layer.paint["line-width"] = lwd*0.75;
+            }
+          }
+        }
+        
+        results_layers.push(layer);
+        
+      }
+    }
+    
+    var all_layers = [];
+    all_layers = all_layers.concat(results_layers);
+    all_layers = all_layers.concat(results_raillayers);
+    all_layers = all_layers.concat(results_symbollayers);
+    all_layers = all_layers.concat(results_symbolraillayers);
+    
+    style.layers = all_layers;
+    var results_string = JSON.stringify(style, null, 4);
+    
+    //作成したスタイルを実際に地図に反映＋ダウンロード準備
+    setdownload(results_string, "railway.json"); //ダウンロード準備
+    console.log("解析完了");
+    
+  }else{
+    alert("まだ地図のスタイルを読み込めていません！");
+  }
+}
+
+/*************************************************/
+/*ダウンロードの処理                               */
+/*************************************************/
+//stylejsonはJSON形式を保った文字列
+var setdownload = function(string, filename){
+      var blob = new Blob([string], {type: 'text\/plain'});
+      var url = URL.createObjectURL(blob);
+      const a = document.getElementById('download');
+      a.href = window.URL.createObjectURL(blob);
+      a.download = filename;
+}
+
+
+/*************************************************/
+/*ボタンごとの処理                               */
+/*************************************************/
+//通常
+var action = function(){
+  stylechange(test, true);
+}
+
+</script>
+ 
+</body>
+</html>
