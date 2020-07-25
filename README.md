@@ -21,6 +21,7 @@ https://mghs15.github.io/railway-map-style/railway.html
 3. railway.htmlで表示。
 
 ※main.htmlは[style-color-change-on-web](https://github.com/mghs15/style-color-change-on-web)のもの。
+
 ※境界(boundary-layer)の強調スタイルについては、手作業にて編集。railway.json→railway2.json
 
 ## 利用したライブラリやコード、参考文献
