@@ -10,6 +10,8 @@
 
 ついでに、鉄道や道路が太いと感じたので、少し細めにしてみました。
 
+また、自治体等の境界を強調した地図も作成してみました。
+
 ## サンプル
 https://mghs15.github.io/railway-map-style/railway.html
 
