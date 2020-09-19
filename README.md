@@ -16,16 +16,20 @@
 https://mghs15.github.io/railway-map-style/railway.html
 
 ## 作成手順
+Node.jsで`node/styleChange.js`を使う。
+に変換使用方法は以下の通り（pale.jsonをrailway.json）。
+
+```node styleChange.js pale.json railway.json```
+
+※境界(boundary-layer)の強調スタイルについては、手作業にて編集（railway.json→railway2.json）。
+
+（ブラウザ上で行う方法）
 1. main.htmlで基本的な色を整える。pale.json→custom.json
 2. custom.htmlで鉄道のレイヤ順や鉄道関係注記の色を変更する。custom.json→railway.json
 3. railway.htmlで表示。
 
 ※main.htmlは[style-color-change-on-web](https://github.com/mghs15/style-color-change-on-web)のもの。
-
-`node/styleChange.js`を使うと、同じ作業が以下のようにNode.jsでできる。
-```node styleChange.js pale.json railway.json```
-
-※境界(boundary-layer)の強調スタイルについては、手作業にて編集。railway.json→railway2.json
+※駅の仮名表示には未対応
 
 ## 利用したライブラリやコード、参考文献
 * Pickr https://github.com/Simonwep/pickr
