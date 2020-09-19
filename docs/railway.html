@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8' />
+<title>Railway Map</title>
+<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+<script src='https://api.tiles.mapbox.com/mapbox-gl-js/v1.8.1/mapbox-gl.js'></script>
+<link href='https://api.tiles.mapbox.com/mapbox-gl-js/v1.8.1/mapbox-gl.css' rel='stylesheet' />
+<style>
+body { margin:0; padding:0; }
+#map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+}
+#menu {
+    position: absolute;
+    left:  0.5em;
+    top: 0.5em; 
+    padding: 0.2em 0.5em;
+    margin: 0 0;
+    background: #eeeeee;
+    box-shadow: 0px 0px 0px 5px #eeeeee;
+    border: dashed 3px #dddddd;
+    font-family: 'Open Sans', sans-serif;
+    width: 90%;
+    height: auto;
+    max-width: 300px;
+}
+button.local {
+  display: block;
+  text-align:center;
+  background: #dddddd;
+  padding 0 0.5em 0 0.5em;
+  border: solid 2px #ddd;
+  border-radius: 3px;
+  margin: 2.5px 0px 2.5px 0px;
+  line-height: 1.5em;
+  font-size: 1em;
+  width: 100%;
+}
+
+</style>
+</head>
+<body>
+
+
+<div id='map'></div>
+<div id='menu'>
+  <button type="button" class="local" name="monochrome" onclick="change_style_1()" >鉄道のみ強調</button>
+  <button type="button" class="local" name="monochrome" onclick="change_style_2()" >自治体等の境界も強調</button>
+</div>
+
+<script>
+/*************************************************/
+/*Mapbox 関係設定                                */
+/*************************************************/
+var map = new mapboxgl.Map({
+  container: 'map', // container id
+  hash: true, //add #position on URL
+  style: './railway.json', // stylesheet location
+  center: [139.78148, 35.768793], // starting position [lng, lat]
+  zoom: 9, // starting zoom
+  minZoom: 6,
+  maxZoom: 17.99,
+  localIdeographFontFamily: ['MS Gothic', 'Hiragino Kaku Gothic Pro', 'sans-serif']
+});
+
+
+map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+map.addControl(new mapboxgl.ScaleControl() );
+
+/*************************************************/
+/*地図の切り替え                                 */
+/*************************************************/
+var change_style_1 = function(){
+  map.setStyle('./railway.json');
+}
+var change_style_2 = function(){
+  map.setStyle('./railway2.json');
+}
+
+</script>
+ 
+</body>
+</html>

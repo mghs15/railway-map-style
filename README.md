@@ -22,6 +22,9 @@ https://mghs15.github.io/railway-map-style/railway.html
 
 ※main.htmlは[style-color-change-on-web](https://github.com/mghs15/style-color-change-on-web)のもの。
 
+`node/styleChange.js`を使うと、同じ作業が以下のようにNode.jsでできる。
+```node styleChange.js pale.json railway.json```
+
 ※境界(boundary-layer)の強調スタイルについては、手作業にて編集。railway.json→railway2.json
 
 ## 利用したライブラリやコード、参考文献
