@@ -17,7 +17,7 @@ https://mghs15.github.io/railway-map-style/railway.html
 
 ## 作成手順
 Node.jsで`node/styleChange.js`を使う。
-に変換使用方法は以下の通り（pale.jsonをrailway.json）。
+使用方法は以下の通り（pale.jsonをrailway.jsonに変換）。
 
 ```node styleChange.js pale.json railway.json```
 
